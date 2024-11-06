@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: postgres-subscription
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: yourpassword
+      POSTGRES_DB: subscription_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-subscription
+    restart: always
+    ports:
+      - "5672:5672"    # Основной порт для подключения
+      - "15672:15672"  # Порт для доступа к Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  subscription-service:
+    build:
+      context: .
+    container_name: subscription-service
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: "host=postgres-subscription user=postgres password=yourpassword dbname=subscription_db port=5432 sslmode=disable TimeZone=UTC"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq-subscription:5672/"
+      WEATHER_SERVICE_URL: "http://weathercast:8000"
+    depends_on:
+      - postgres
+      - rabbitmq
+
+volumes:
+  postgres_data:
